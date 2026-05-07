@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GXO · Google Security Operations Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap');
+:root{
+  --navy:#0d1f3c;--navy2:#152a50;
+  --blue:#1e6fff;--blue-l:#e8f0fe;
+  --red:#d42b2b;--red-l:#fdeaea;--red-m:#fca5a5;
+  --amber:#c97b00;--amber-l:#fef6e4;
+  --green:#1a9e55;--green-l:#e6f9ee;
+  --teal:#0a8f7e;--teal-l:#e4f8f5;
+  --purple:#6b35c7;--purple-l:#f0ebff;
+  --slate:#3d4f6e;--muted:#7988a0;
+  --border:#e4e9f2;--surface:#f6f8fc;--bg:#eef1f7;
+  --white:#ffffff;--text:#101828;--text2:#4a5568;
+  --shadow:0 1px 4px rgba(0,0,0,.07),0 4px 16px rgba(0,0,0,.05);
+  --shadow-sm:0 1px 3px rgba(0,0,0,.06);
+  --r:10px;--r-sm:6px;
+  --cat-daily:#e05a22;--cat-access:#1e6fff;--cat-monthly:#c97b00;
+  --cat-report:#d42b2b;--cat-yard:#0a8f7e;--cat-suppl:#6b35c7;
+  --fail:#d42b2b;--fail-l:#fdeaea;--fail-border:#fca5a5;
+  --warn:#c97b00;--warn-l:#fef6e4;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;overflow:hidden;height:100vh}
+.app{display:grid;grid-template-columns:220px 1fr;height:100vh}
+.sidebar{background:var(--navy);display:flex;flex-direction:column;overflow-y:auto}
+.brand{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.brand-logo{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.brand-mark{width:30px;height:30px;border-radius:8px;background:var(--blue);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-mark svg{width:16px;height:16px;fill:white}
+.brand-name{font-size:13px;font-weight:600;color:white;line-height:1.2}
+.brand-sub{font-size:10px;color:rgba(255,255,255,.4)}
+.brand-tag{display:inline-block;font-size:9px;font-weight:600;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);letter-spacing:.04em;text-transform:uppercase}
+.nav-section{padding:16px 12px 6px;font-size:9px;font-weight:600;color:rgba(255,255,255,.3);letter-spacing:.08em;text-transform:uppercase}
+.nav{padding:0 8px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r-sm);font-size:13px;color:rgba(255,255,255,.55);cursor:pointer;transition:all .15s;margin-bottom:2px;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.9)}
+.nav-item.active{background:var(--blue);color:white}
+.nav-item .ni{width:16px;height:16px;opacity:.7;flex-shrink:0}
+.nav-item.active .ni{opacity:1}
+.nav-badge{margin-left:auto;background:var(--red);color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px}
+.nav-badge-warn{margin-left:auto;background:var(--warn);color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px}
+.filter-section{margin-top:auto;padding:14px 12px;border-top:1px solid rgba(255,255,255,.07)}
+.filter-title{font-size:9px;font-weight:600;color:rgba(255,255,255,.3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+.filter-group{margin-bottom:10px}
+.filter-label{font-size:10px;color:rgba(255,255,255,.4);margin-bottom:4px}
+.sti-select{width:100%;border:1px solid rgba(255,255,255,.12);border-radius:var(--r-sm);background:rgba(255,255,255,.06);color:rgba(255,255,255,.8);padding:6px 8px;font-size:11px;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.3)'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:22px}
+.sti-select:hover{border-color:rgba(255,255,255,.25)}
+.sti-select option{background:var(--navy2);color:white}
+.apply-btn{width:100%;padding:7px;border-radius:var(--r-sm);background:var(--blue);color:white;border:none;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .15s;margin-top:4px}
+.apply-btn:hover{background:#1558d6}
+.main{display:flex;flex-direction:column;overflow:hidden}
+.topbar{background:var(--white);border-bottom:1px solid var(--border);padding:0 22px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:var(--shadow-sm)}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.page-title{font-size:15px;font-weight:600;color:var(--text)}
+.page-crumb{font-size:12px;color:var(--muted)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.period-chip{background:var(--surface);border:1px solid var(--border);padding:5px 12px;border-radius:20px;font-size:12px;color:var(--text2)}
+.last-update{font-size:11px;color:var(--muted)}
+.content{flex:1;overflow-y:auto;padding:18px 22px}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.page{display:none}
+.page.active{display:block}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.kpi-row-6{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px}
+.kpi{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden}
+.kpi.fail-kpi{border-color:var(--fail-border);background:#fff8f8}
+.kpi-line{position:absolute;top:0;left:0;width:100%;height:3px}
+.kpi-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.kpi-value{font-size:26px;font-weight:600;color:var(--text);font-family:'DM Mono',monospace;line-height:1}
+.kpi-value.red{color:var(--red)}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:5px}
+.kpi-trend{display:inline-block;font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;margin-top:5px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.g65{display:grid;grid-template-columns:1.65fr 1fr;gap:14px;margin-bottom:14px}
+.g35{display:grid;grid-template-columns:1fr 1.65fr;gap:14px;margin-bottom:14px}
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow-sm);overflow:hidden}
+.card.fail-card{border-color:var(--fail-border);border-left:3px solid var(--fail)}
+.card-hd{margin-bottom:14px}
+.card-hd-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+.card-title{font-size:13px;font-weight:600;color:var(--text)}
+.card-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.sti-el{font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;background:#fef9c3;color:#854d0e;border:1px solid #fde047;display:inline-block;margin-left:8px}
+
+/* ── FAIL SECTION HEADER ── */
+.fail-section-hdr{
+  display:flex;align-items:center;gap:10px;
+  background:var(--fail-l);border:1px solid var(--fail-border);
+  border-radius:var(--r-sm);padding:8px 14px;margin-bottom:14px;
+}
+.fail-section-hdr-icon{color:var(--fail);font-size:16px}
+.fail-section-hdr-text{font-size:12px;font-weight:600;color:var(--fail)}
+.fail-section-hdr-sub{font-size:11px;color:#e05a5a;margin-top:1px}
+
+/* ── FAIL BADGE IN TABLES ── */
+.fail-badge{display:inline-flex;align-items:center;gap:3px;background:var(--fail-l);color:var(--fail);border:1px solid var(--fail-border);padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700}
+.pass-badge{display:inline-flex;align-items:center;gap:3px;background:var(--green-l);color:var(--green);border:1px solid #a7f3c3;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700}
+.na-badge{display:inline-flex;align-items:center;gap:3px;background:var(--surface);color:var(--muted);border:1px solid var(--border);padding:1px 7px;border-radius:4px;font-size:10px;font-weight:600}
+.pill{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600}
+.pill-red{background:var(--red-l);color:var(--red)}
+.pill-blue{background:var(--blue-l);color:var(--blue)}
+.pill-amber{background:var(--amber-l);color:var(--amber)}
+.pill-green{background:var(--green-l);color:var(--green)}
+.pill-teal{background:var(--teal-l);color:var(--teal)}
+.pill-gray{background:var(--surface);color:var(--muted)}
+
+/* ── FAIL HEATMAP ROW IN TABLES ── */
+.fail-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--fail);margin-right:3px}
+.fail-rate-bar{display:inline-block;height:4px;border-radius:2px;background:var(--fail);vertical-align:middle}
+.fail-rate-bg{display:inline-block;height:4px;border-radius:2px;background:var(--fail-border);vertical-align:middle}
+.rate-wrap{display:flex;align-items:center;gap:5px}
+.rate-track{width:60px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;flex-shrink:0}
+.rate-fill{height:100%;border-radius:3px;background:var(--fail)}
+.rate-pct{font-size:11px;font-family:'DM Mono',monospace;color:var(--fail);font-weight:600;min-width:32px}
+
+.data-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.data-tbl th{font-size:10px;font-weight:600;color:var(--muted);padding:6px 10px;border-bottom:2px solid var(--border);text-align:left;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.data-tbl td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+.data-tbl tr:last-child td{border-bottom:none}
+.data-tbl tr:hover td{background:var(--surface)}
+.data-tbl-wrap{max-height:280px;overflow-y:auto}
+.data-tbl-wrap::-webkit-scrollbar{width:3px}
+.data-tbl-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+.mbar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.mbar-lbl{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mbar-track{flex:1;height:6px;background:var(--surface);border-radius:3px;overflow:hidden}
+.mbar-fill{height:100%;border-radius:3px;transition:width .4s ease}
+.mbar-cnt{font-size:11px;font-family:'DM Mono',monospace;color:var(--muted);width:34px;text-align:right;flex-shrink:0}
+
+.av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+.leg-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted)}
+.leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.ch{position:relative}
+
+/* Fail pulsing dot for critical items */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.critical-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--fail);animation:pulse 1.8s ease-in-out infinite;margin-right:5px;vertical-align:middle}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="brand">
+    <div class="brand-logo">
+      <div class="brand-mark"><svg viewBox="0 0 20 20"><path d="M10 2L2 6l8 4 8-4-8-4zM2 14l8 4 8-4M2 10l8 4 8-4"/></svg></div>
+      <div><div class="brand-name">GXO / Google</div><div class="brand-sub">Security Operations</div></div>
+    </div>
+    <div class="brand-tag">MoboHub · Stimulsoft</div>
+  </div>
+  <div class="nav-section">Navigation</div>
+  <div class="nav">
+    <button class="nav-item active" onclick="switchPage('p1',this)">
+      <svg class="ni" viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z"/></svg>
+      Network Overview
+    </button>
+    <button class="nav-item" onclick="switchPage('p2',this)">
+      <svg class="ni" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5z"/></svg>
+      Audit Activity
+    </button>
+    <button class="nav-item" onclick="switchPage('p3',this)">
+      <svg class="ni" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"/></svg>
+      Audit Fail Analysis
+      <span class="nav-badge-warn" id="fail-badge">147</span>
+    </button>
+    <button class="nav-item" onclick="switchPage('p4',this)">
+      <svg class="ni" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"/></svg>
+      Reports &amp; Events
+      <span class="nav-badge">64</span>
+    </button>
+    <button class="nav-item" onclick="switchPage('p5',this)">
+      <svg class="ni" viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
+      By Officer
+    </button>
+  </div>
+  <div class="filter-section">
+    <div class="filter-title">Global Filters</div>
+    <div class="filter-group">
+      <div class="filter-label">Period</div>
+      <select class="sti-select" id="f-period" onchange="applyFilters()">
+        <option value="may26">May 2026</option>
+        <option value="apr26">April 2026</option>
+        <option value="q1">Q1 2026</option>
+        <option value="last30">Last 30 days</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Form Category</div>
+      <select class="sti-select" id="f-cat" onchange="applyFilters()">
+        <option value="all">All categories</option>
+        <option value="daily">Daily Security</option>
+        <option value="access">Access &amp; Doors</option>
+        <option value="monthly">Monthly Audits</option>
+        <option value="report">Reports &amp; Events</option>
+        <option value="yard">Yard Operations</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Specific Form</div>
+      <select class="sti-select" id="f-form" onchange="applyFilters()">
+        <option value="all">All forms</option>
+        <option value="001">GXO-G-001 Metal Detector</option>
+        <option value="002">GXO-G-002 Security Priorities</option>
+        <option value="003">GXO-G-003 CCTV Audit</option>
+        <option value="004">GXO-G-004 Door Bypass Log</option>
+        <option value="005">GXO-G-005 Alarm Inspection</option>
+        <option value="008">GXO-G-008 Sec. Incident</option>
+        <option value="011">GXO-G-011 Maintenance Req.</option>
+        <option value="013">GXO-G-013 Trailer Yard</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Site</div>
+      <select class="sti-select" id="f-site" onchange="applyFilters()">
+        <option value="all">All sites (13)</option>
+        <option value="corn">Corn Omaha NE</option>
+        <option value="lenoir">Lenoir NC</option>
+        <option value="manassas">Manassas VA</option>
+        <option value="oakley">Oakley GA</option>
+        <option value="gresham">Gresham OR</option>
+        <option value="santiago">Santiago CHL</option>
+        <option value="uruguay">Uruguay</option>
+      </select>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="page-title" id="page-title">Network Overview</div>
+      <div class="page-crumb" id="page-crumb">All sites · All forms</div>
+    </div>
+    <div class="topbar-right">
+      <div class="period-chip" id="period-display">May 2026</div>
+      <div class="last-update">Updated: today 09:15</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ══════════════════════════════════════
+         P1: NETWORK OVERVIEW
+    ══════════════════════════════════════ -->
+    <div class="page active" id="p1">
+
+      <!-- Activity KPIs -->
+      <div class="kpi-row">
+        <div class="kpi"><div class="kpi-line" style="background:var(--blue)"></div>
+          <div class="kpi-label">Total submissions</div>
+          <div class="kpi-value">4,770</div>
+          <div class="kpi-sub">this month · all sites</div>
+          <div class="kpi-trend" style="background:var(--green-l);color:var(--green)">↑ +12% vs Apr</div>
+        </div>
+        <div class="kpi"><div class="kpi-line" style="background:var(--cat-daily)"></div>
+          <div class="kpi-label">Audit / checklist forms</div>
+          <div class="kpi-value">4,706</div>
+          <div class="kpi-sub">FormType = Checklist</div>
+        </div>
+        <div class="kpi"><div class="kpi-line" style="background:var(--red)"></div>
+          <div class="kpi-label">Report / event forms</div>
+          <div class="kpi-value">64</div>
+          <div class="kpi-sub">Incident + Maint. + Removal</div>
+        </div>
+        <div class="kpi"><div class="kpi-line" style="background:var(--green)"></div>
+          <div class="kpi-label">Sites active today</div>
+          <div class="kpi-value">12</div>
+          <div class="kpi-sub">Uruguay — 0 today</div>
+        </div>
+      </div>
+
+      <!-- FAIL summary strip -->
+      <div class="fail-section-hdr">
+        <span style="color:var(--fail);font-size:18px;line-height:1">⚠</span>
+        <div>
+          <div class="fail-section-hdr-text">Audit field failures this month — field-level data from MoboHub export (Option A)</div>
+          <div class="fail-section-hdr-sub">Pass/Fail/N/A results per field, per submission. Click P3 · Audit Fail Analysis for full detail.</div>
+        </div>
+      </div>
+
+      <!-- Fail KPIs -->
+      <div class="kpi-row-6" style="margin-bottom:16px">
+        <div class="kpi fail-kpi"><div class="kpi-line" style="background:var(--fail)"></div>
+          <div class="kpi-label" style="color:var(--fail)">Total FAIL results</div>
+          <div class="kpi-value red">147</div>
+          <div class="kpi-sub">across all audit forms</div>
+        </div>
+        <div class="kpi fail-kpi"><div class="kpi-line" style="background:var(--fail)"></div>
+          <div class="kpi-label" style="color:var(--fail)">Submissions with ≥1 fail</div>
+          <div class="kpi-value red">89</div>
+          <div class="kpi-sub">of 4,706 audit submissions</div>
+        </div>
+        <div class="kpi fail-kpi"><div class="kpi-line" style="background:var(--warn)"></div>
+          <div class="kpi-label" style="color:var(--warn)">Overall fail rate</div>
+          <div class="kpi-value" style="color:var(--warn)">3.1%</div>
+          <div class="kpi-sub">field answers = Fail</div>
+        </div>
+        <div class="kpi fail-kpi"><div class="kpi-line" style="background:var(--fail)"></div>
+          <div class="kpi-label" style="color:var(--fail)">Most failing form</div>
+          <div class="kpi-value red" style="font-size:15px;margin-top:4px">Security Priorities</div>
+          <div class="kpi-sub">48 fail results · GXO-G-002</div>
+        </div>
+        <div class="kpi fail-kpi"><div class="kpi-line" style="background:var(--fail)"></div>
+          <div class="kpi-label" style="color:var(--fail)">Most failing site</div>
+          <div class="kpi-value red" style="font-size:15px;margin-top:4px">Lenoir NC</div>
+          <div class="kpi-sub">41 fail results</div>
+        </div>
+        <div class="kpi fail-kpi"><div class="kpi-line" style="background:var(--fail)"></div>
+          <div class="kpi-label" style="color:var(--fail)">Most failing field</div>
+          <div class="kpi-value red" style="font-size:13px;margin-top:4px">Exterior lights</div>
+          <div class="kpi-sub">22× across all sites</div>
+        </div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="g65">
+        <div class="card">
+          <div class="card-hd">
+            <div class="card-title">Submissions per site by form category <span class="sti-el">STACKED BAR</span></div>
+            <div class="card-sub">X: site · Series: FormCategory · Value: COUNT(SubmissionID)</div>
+          </div>
+          <div class="ch" style="height:190px"><canvas id="chartSiteCat"></canvas></div>
+          <div class="legend">
+            <div class="leg-item"><div class="leg-dot" style="background:var(--cat-daily)"></div>Daily Security</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--cat-access)"></div>Access &amp; Doors</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--cat-monthly)"></div>Monthly Audits</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--cat-report)"></div>Reports &amp; Events</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--cat-yard)"></div>Yard Ops</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="card">
+            <div class="card-hd">
+              <div class="card-title">Fail results by site <span class="sti-el">BAR</span></div>
+              <div class="card-sub">COUNT of Fail field answers per site</div>
+            </div>
+            <div class="ch" style="height:110px"><canvas id="chartFailSiteP1"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-hd">
+              <div class="card-title">Daily trend: submissions vs fails <span class="sti-el">LINE</span></div>
+              <div class="card-sub">Last 14 days</div>
+            </div>
+            <div class="ch" style="height:80px"><canvas id="chartTrendP1"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <div class="card-title">Site activity &amp; fail summary <span class="sti-el">TABLE</span></div>
+          <div class="card-sub">Submissions + fail results + fail rate per site this month</div>
+        </div>
+        <table class="data-tbl">
+          <thead><tr>
+            <th>Site</th><th>Total forms</th><th>Audits</th>
+            <th>Fail results</th><th>Fail rate</th><th>Top failing field</th><th>Reports</th><th>Today</th>
+          </tr></thead>
+          <tbody id="siteTableP1"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         P2: AUDIT ACTIVITY
+    ══════════════════════════════════════ -->
+    <div class="page" id="p2">
+      <div class="kpi-row">
+        <div class="kpi"><div class="kpi-line" style="background:var(--blue)"></div><div class="kpi-label">Audit forms</div><div class="kpi-value">4,706</div><div class="kpi-sub">FormType = Checklist/Audit</div></div>
+        <div class="kpi"><div class="kpi-line" style="background:var(--cat-daily)"></div><div class="kpi-label">Most active form</div><div class="kpi-value" style="font-size:16px;margin-top:4px">Daily Sec. Priorities</div><div class="kpi-sub">613 submissions</div></div>
+        <div class="kpi"><div class="kpi-line" style="background:var(--green)"></div><div class="kpi-label">Unique officers</div><div class="kpi-value">89</div><div class="kpi-sub">submitted this month</div></div>
+        <div class="kpi"><div class="kpi-line" style="background:var(--amber)"></div><div class="kpi-label">Avg submissions/site/day</div><div class="kpi-value">14.7</div><div class="kpi-sub">Mon–Fri average</div></div>
+      </div>
+      <div class="g65">
+        <div class="card">
+          <div class="card-hd"><div class="card-title">Top audit forms — submission count <span class="sti-el">HORIZONTAL BAR</span></div><div class="card-sub">All sites · this month</div></div>
+          <div class="ch" style="height:220px"><canvas id="chartTopForms"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div class="card-title">Weekly trend by category <span class="sti-el">LINE</span></div><div class="card-sub">Last 8 weeks</div></div>
+          <div class="ch" style="height:220px"><canvas id="chartAuditTrend"></canvas></div>
+        </div>
+      </div>
+      <div class="g2">
+        <div class="card">
+          <div class="card-hd"><div class="card-title">Activity by hour of day <span class="sti-el">BAR</span></div><div class="card-sub">When are audit forms submitted · all sites</div></div>
+          <div class="ch" style="height:140px"><canvas id="chartHourAudit"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div class="card-title">Audit form detail <span class="sti-el">TABLE</span></div><div class="card-sub">Count per form · filtered by category/site</div></div>
+          <div class="data-tbl-wrap">
+            <table class="data-tbl">
+              <thead><tr><th>Form</th><th>Category</th><th>Count</th><th>Sites</th><th>Last</th></tr></thead>
+              <tbody id="auditFormBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         P3: AUDIT FAIL ANALYSIS  ← NUEVA
+    ══════════════════════════════════════ -->
+    <div class="page" id="p3">
+
+      <div class="fail-section-hdr">
+        <span style="color:var(--fail);font-size:20px;line-height:1">⚠</span>
+        <div>
+          <div class="fail-section-hdr-text">Audit Fail Analysis — Field-level failures from MoboHub export</div>
+          <div class="fail-section-hdr-sub">Source: one column per field answer in Excel export · WHERE answer = "Fail" · Filter by form, site, or field type</div>
+        </div>
+      </div>
+
+      <div class="kpi-row">
+        <div class="kpi fail-kpi"><div class="kpi-line" style="background:var(--fail)"></div>
+          <div class="kpi-label" style="color:var(--fail)">Total Fail results</div>
+          <div class="kpi-value red">147</div>
+          <div class="kpi-sub">all audit forms · May 2026</div>
+        </div>
+        <div class="kpi fail-kpi"><div class="kpi-line" style="background:var(--fail)"></div>
+          <div class="kpi-label" style="color:var(--fail)">Submissions with ≥1 fail</div>
+          <div class="kpi-value red">89</div>
+          <div class="kpi-sub">of 4,706 audit submissions</div>
+        </div>
+        <div class="kpi fail-kpi"><div class="kpi-line" style="background:var(--warn)"></div>
+          <div class="kpi-label" style="color:var(--warn)">Overall fail rate</div>
+          <div class="kpi-value" style="color:var(--warn)">3.1%</div>
+          <div class="kpi-sub">total field answers = Fail</div>
+        </div>
+        <div class="kpi fail-kpi"><div class="kpi-line" style="background:var(--warn)"></div>
+          <div class="kpi-label" style="color:var(--warn)">Recurring fails (≥3×)</div>
+          <div class="kpi-value" style="color:var(--warn)">18</div>
+          <div class="kpi-sub">same field failed 3+ times</div>
+        </div>
+      </div>
+
+      <div class="g2">
+        <div class="card fail-card">
+          <div class="card-hd">
+            <div class="card-title">Fail results by form <span class="sti-el">HORIZONTAL BAR</span></div>
+            <div class="card-sub">Total Fail answers per form this month · WHERE FieldAnswer = "Fail"</div>
+          </div>
+          <div class="ch" style="height:200px"><canvas id="chartFailByForm"></canvas></div>
+        </div>
+        <div class="card fail-card">
+          <div class="card-hd">
+            <div class="card-title">Fail results by site <span class="sti-el">HORIZONTAL BAR</span></div>
+            <div class="card-sub">Total Fail answers per site · which location needs attention</div>
+          </div>
+          <div class="ch" style="height:200px"><canvas id="chartFailBySite"></canvas></div>
+        </div>
+      </div>
+
+      <div class="g65">
+        <div class="card fail-card">
+          <div class="card-hd">
+            <div class="card-title">Most failed fields — top recurring issues <span class="sti-el">TABLE</span></div>
+            <div class="card-sub">
+              Which specific field answers are "Fail" most often · source: field columns in Excel export ·
+              <span style="color:var(--fail);font-weight:600">Sorted by frequency DESC</span>
+            </div>
+          </div>
+          <div class="data-tbl-wrap" style="max-height:320px">
+            <table class="data-tbl" id="failFieldTable">
+              <thead><tr>
+                <th style="width:5%"></th>
+                <th style="width:22%">Field Name</th>
+                <th style="width:18%">Form</th>
+                <th style="width:13%">Site</th>
+                <th style="width:7%;text-align:center">Fails</th>
+                <th style="width:20%">Fail rate</th>
+                <th style="width:15%">Last failed</th>
+              </tr></thead>
+              <tbody id="failFieldBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="card fail-card">
+            <div class="card-hd">
+              <div class="card-title">Fail trend — daily this month <span class="sti-el">LINE</span></div>
+              <div class="card-sub">COUNT of Fail results per day</div>
+            </div>
+            <div class="ch" style="height:120px"><canvas id="chartFailTrend"></canvas></div>
+          </div>
+          <div class="card fail-card">
+            <div class="card-hd">
+              <div class="card-title">Fails by field category <span class="sti-el">DOUGHNUT</span></div>
+              <div class="card-sub">Type of check that fails most</div>
+            </div>
+            <div class="ch" style="height:130px"><canvas id="chartFailCat"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Full fail log -->
+      <div class="card fail-card">
+        <div class="card-hd-row">
+          <div>
+            <div class="card-title">Complete fail log — all field failures this month <span class="sti-el">TABLE</span></div>
+            <div class="card-sub">One row per failed field · source: field columns in Excel export · filter: form + site + date</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <select class="sti-select" style="background:#f8f8f8;color:var(--text);border-color:var(--border);width:160px" id="failFormFilter" onchange="renderFailLog()">
+              <option value="all">All forms</option>
+              <option value="GXO-G-002">GXO-G-002 Security Priorities</option>
+              <option value="GXO-G-001">GXO-G-001 Metal Detector</option>
+              <option value="GXO-G-003">GXO-G-003 CCTV Audit</option>
+              <option value="GXO-G-005">GXO-G-005 Alarm Inspection</option>
+            </select>
+            <select class="sti-select" style="background:#f8f8f8;color:var(--text);border-color:var(--border);width:140px" id="failSiteFilter" onchange="renderFailLog()">
+              <option value="all">All sites</option>
+              <option value="Lenoir NC">Lenoir NC</option>
+              <option value="Corn Omaha">Corn Omaha</option>
+              <option value="Oakley GA">Oakley GA</option>
+              <option value="Uruguay">Uruguay</option>
+            </select>
+          </div>
+        </div>
+        <div class="data-tbl-wrap" style="max-height:280px">
+          <table class="data-tbl">
+            <thead><tr>
+              <th>Date / Time</th><th>Form</th><th>Site</th>
+              <th>Field that failed</th><th>Answer recorded</th>
+              <th>Officer</th><th>Comments</th>
+            </tr></thead>
+            <tbody id="failLogBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         P4: REPORTS & EVENTS
+    ══════════════════════════════════════ -->
+    <div class="page" id="p4">
+      <div style="background:var(--red-l);border:1px solid var(--fail-border);border-radius:var(--r-sm);padding:8px 14px;font-size:12px;color:var(--red);display:flex;gap:8px;align-items:center;margin-bottom:14px">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"/></svg>
+        Fixed filter: <strong>FormType = Report/Event</strong> — GXO-G-008, GXO-G-011 and GXO-G-012 only
+      </div>
+      <div class="kpi-row">
+        <div class="kpi"><div class="kpi-line" style="background:var(--red)"></div><div class="kpi-label">Security incidents</div><div class="kpi-value">23</div><div class="kpi-sub">GXO-G-008 · May 2026</div></div>
+        <div class="kpi"><div class="kpi-line" style="background:var(--amber)"></div><div class="kpi-label">Maintenance requests</div><div class="kpi-value">38</div><div class="kpi-sub">GXO-G-011 · May 2026</div></div>
+        <div class="kpi"><div class="kpi-line" style="background:var(--blue)"></div><div class="kpi-label">Property removals</div><div class="kpi-value">3</div><div class="kpi-sub">GXO-G-012 · May 2026</div></div>
+        <div class="kpi"><div class="kpi-line" style="background:var(--teal)"></div><div class="kpi-label">Sites reporting events</div><div class="kpi-value">9</div><div class="kpi-sub">of 13 total sites</div></div>
+      </div>
+      <div class="g2">
+        <div class="card"><div class="card-hd"><div class="card-title">Reports over time <span class="sti-el">LINE</span></div><div class="card-sub">Daily count · 3 series</div></div><div class="ch" style="height:150px"><canvas id="chartReportTrend"></canvas></div></div>
+        <div class="card"><div class="card-hd"><div class="card-title">Reports by site <span class="sti-el">BAR</span></div><div class="card-sub">COUNT · FormType = Report/Event</div></div><div class="ch" style="height:150px"><canvas id="chartReportSite"></canvas></div></div>
+      </div>
+      <div class="g65">
+        <div class="card">
+          <div class="card-hd"><div class="card-title">All report submissions <span class="sti-el">TABLE</span></div><div class="card-sub">Who · which form · which site · when</div></div>
+          <div class="data-tbl-wrap"><table class="data-tbl"><thead><tr><th>Date</th><th>Form type</th><th>Site</th><th>Submitted by</th><th>Role</th></tr></thead><tbody id="reportTable"></tbody></table></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="card"><div class="card-hd"><div class="card-title">Split by type <span class="sti-el">DOUGHNUT</span></div></div><div class="ch" style="height:120px"><canvas id="chartReportDonut"></canvas></div></div>
+          <div class="card"><div class="card-hd"><div class="card-title">Report hour pattern <span class="sti-el">BAR</span></div><div class="card-sub">When are reports submitted</div></div><div class="ch" style="height:90px"><canvas id="chartReportHour"></canvas></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         P5: BY OFFICER
+    ══════════════════════════════════════ -->
+    <div class="page" id="p5">
+      <div class="kpi-row">
+        <div class="kpi"><div class="kpi-line" style="background:var(--blue)"></div><div class="kpi-label">Total officers</div><div class="kpi-value">89</div><div class="kpi-sub">submitted this month</div></div>
+        <div class="kpi"><div class="kpi-line" style="background:var(--green)"></div><div class="kpi-label">Active today</div><div class="kpi-value">31</div><div class="kpi-sub">across all sites</div></div>
+        <div class="kpi"><div class="kpi-line" style="background:var(--amber)"></div><div class="kpi-label">Avg forms/officer/week</div><div class="kpi-value">13.4</div><div class="kpi-sub">working days only</div></div>
+        <div class="kpi fail-kpi"><div class="kpi-line" style="background:var(--fail)"></div><div class="kpi-label" style="color:var(--fail)">Officers with fail results</div><div class="kpi-value red">34</div><div class="kpi-sub">recorded ≥1 Fail field</div></div>
+      </div>
+      <div class="g65">
+        <div class="card">
+          <div class="card-hd"><div class="card-title">Officer activity log <span class="sti-el">TABLE</span></div><div class="card-sub">Audits · Reports · Fail results per officer</div></div>
+          <div class="data-tbl-wrap"><table class="data-tbl"><thead><tr><th>Officer</th><th>Site</th><th>Role</th><th style="text-align:right">Audits</th><th style="text-align:right">Reports</th><th style="text-align:right">Fails</th><th>Last</th></tr></thead><tbody id="officerTable"></tbody></table></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="card"><div class="card-hd"><div class="card-title">Submissions by day of week <span class="sti-el">BAR</span></div></div><div class="ch" style="height:120px"><canvas id="chartDayOfWeek"></canvas></div></div>
+          <div class="card"><div class="card-hd"><div class="card-title">Top officers by volume <span class="sti-el">BAR</span></div></div><div id="topOfficers"></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+Chart.defaults.font.family="'DM Sans',sans-serif";
+Chart.defaults.font.size=11;
+Chart.defaults.color='#7988a0';
+const AC={};
+function DC(id){if(AC[id]){AC[id].destroy();delete AC[id];}}
+
+// ── DATA ──────────────────────────────────────────────────────
+const SITES=[
+  {id:'corn',    name:'Corn Omaha NE', total:586,  audits:574, reports:12, officers:28, fails:28, failRate:4.8, topField:'Exterior lights',    today:true},
+  {id:'lenoir',  name:'Lenoir NC',     total:1741, audits:1727,reports:14, officers:62, fails:41, failRate:2.4, topField:'Trailers dock locked',today:true},
+  {id:'manassas',name:'Manassas VA',   total:316,  audits:310, reports:6,  officers:22, fails:18, failRate:5.8, topField:'SOC monitors',        today:true},
+  {id:'oakley',  name:'Oakley GA',     total:503,  audits:495, reports:8,  officers:35, fails:22, failRate:4.4, topField:'Exterior lights',     today:true},
+  {id:'gresham', name:'Gresham OR',    total:237,  audits:233, reports:4,  officers:16, fails:12, failRate:5.1, topField:'Alarm zones',         today:true},
+  {id:'skyview', name:'Skyview GA',    total:321,  audits:318, reports:3,  officers:24, fails:8,  failRate:2.5, topField:'Perimeter gates',     today:true},
+  {id:'moncks',  name:'Moncks Corner', total:184,  audits:181, reports:3,  officers:13, fails:5,  failRate:2.8, topField:'CCTV recorder',       today:true},
+  {id:'papillion',name:'Papillion NE', total:175,  audits:172, reports:3,  officers:12, fails:4,  failRate:2.3, topField:'Exterior lights',     today:true},
+  {id:'thornton',name:'Thornton GA',   total:212,  audits:209, reports:3,  officers:18, fails:3,  failRate:1.4, topField:'Walk paths',          today:true},
+  {id:'hornlake',name:'Horn Lake MS',  total:98,   audits:96,  reports:2,  officers:9,  fails:2,  failRate:2.1, topField:'Fire exits',          today:true},
+  {id:'fremont', name:'Fremont CA',    total:207,  audits:204, reports:3,  officers:14, fails:2,  failRate:1.0, topField:'Security radios',     today:true},
+  {id:'santiago',name:'Santiago CHL',  total:177,  audits:175, reports:2,  officers:14, fails:1,  failRate:0.6, topField:'Exterior lights',     today:true},
+  {id:'uruguay', name:'Uruguay',       total:13,   audits:11,  reports:2,  officers:4,  fails:1,  failRate:9.1, topField:'Overhead doors',      today:false},
+];
+
+const FAIL_FIELDS=[
+  {field:'Exterior parking lot lights operational?',form:'GXO-G-002',formName:'Daily Security Priorities',site:'Multiple sites',fails:22,rate:3.6,last:'Today 06:14'},
+  {field:'MD003 – Drivers Entry (Result)',          form:'GXO-G-001',formName:'Daily Metal Detector',     site:'Corn Omaha',   fails:16,rate:25.8,last:'Today 06:32'},
+  {field:'Trailers at dock secured with dock lock?',form:'GXO-G-002',formName:'Daily Security Priorities',site:'Lenoir NC',    fails:14,rate:4.5,last:'Today 06:20'},
+  {field:'All SOC monitors working?',               form:'GXO-G-002',formName:'Daily Security Priorities',site:'Manassas VA',  fails:10,rate:16.1,last:'May 5 · 14:30'},
+  {field:'CAM-14B Zone B (Status)',                 form:'GXO-G-003',formName:'Daily CCTV Audit',         site:'Lenoir NC',    fails:9, rate:14.5,last:'May 6 · 07:18'},
+  {field:'Zone ZN-22 Motion Sensor (Result)',       form:'GXO-G-005',formName:'Monthly Alarm Inspection', site:'Gresham OR',   fails:8, rate:10.2,last:'May 2'},
+  {field:'Exterior building lights operational?',   form:'GXO-G-002',formName:'Daily Security Priorities',site:'Multiple',     fails:7, rate:1.1,last:'May 5'},
+  {field:'Perimeter gates secured?',                form:'GXO-G-002',formName:'Daily Security Priorities',site:'Skyview GA',   fails:6, rate:9.7,last:'May 4'},
+  {field:'Are all fire exits clear of obstruction?',form:'GXO-G-002',formName:'Daily Security Priorities',site:'Horn Lake',    fails:5, rate:8.1,last:'May 3'},
+  {field:'Signs of damage to alarm system?',        form:'GXO-G-002',formName:'Daily Security Priorities',site:'Multiple',     fails:5, rate:0.8,last:'May 4'},
+  {field:'All overhead doors secured with padlock?',form:'GXO-G-002',formName:'Daily Security Priorities',site:'Uruguay',      fails:4, rate:36.4,last:'May 3'},
+  {field:'Do all recorders have 90 days of video?', form:'GXO-G-003',formName:'Daily CCTV Audit',         site:'Moncks Corner',fails:4, rate:6.5,last:'May 5'},
+  {field:'CAM-08 Parking Lot N (Status)',           form:'GXO-G-003',formName:'Daily CCTV Audit',         site:'Oakley GA',    fails:3, rate:4.8,last:'May 4'},
+  {field:'Walk paths clear of obstruction?',        form:'GXO-G-002',formName:'Daily Security Priorities',site:'Thornton GA',  fails:3, rate:4.8,last:'May 5'},
+  {field:'All security radios working?',            form:'GXO-G-002',formName:'Daily Security Priorities',site:'Fremont CA',   fails:2, rate:3.2,last:'May 1'},
+];
+
+const FAIL_LOG_DATA=[
+  {date:'May 6 · 06:32',form:'GXO-G-001',site:'Corn Omaha',field:'MD003 – Drivers Entry (Result)',answer:'Fail',officer:'J. García',comment:'Device not responding. Reported to maintenance.'},
+  {date:'May 6 · 06:14',form:'GXO-G-002',site:'Corn Omaha',field:'Exterior parking lot lights operational?',answer:'Fail',officer:'J. García',comment:'3 lights out on south parking lot.'},
+  {date:'May 6 · 06:20',form:'GXO-G-002',site:'Lenoir NC', field:'Trailers at dock secured with dock lock?',answer:'Fail',officer:'M. Torres',comment:'Dock 14 lock missing. Ops notified.'},
+  {date:'May 5 · 14:30',form:'GXO-G-002',site:'Manassas VA',field:'All SOC monitors working?',answer:'Fail',officer:'R. Davis',comment:'Monitor 2 black screen. IT ticket opened.'},
+  {date:'May 5 · 07:18',form:'GXO-G-003',site:'Lenoir NC', field:'CAM-14B Zone B (Status)',answer:'Fail',officer:'M. Torres',comment:'Camera offline. Maintenance notified.'},
+  {date:'May 5 · 06:32',form:'GXO-G-001',site:'Corn Omaha',field:'MD003 – Drivers Entry (Result)',answer:'Fail',officer:'K. Brown',comment:'Same device as yesterday.'},
+  {date:'May 4 · 09:45',form:'GXO-G-002',site:'Skyview GA',field:'Perimeter gates secured?',answer:'Fail',officer:'T. Brown',comment:'South gate latch broken. Security supervisor aware.'},
+  {date:'May 3 · 07:00',form:'GXO-G-002',site:'Uruguay',   field:'All overhead doors secured with padlock?',answer:'Fail',officer:'A. Gutierrez',comment:'Padlock missing on door 3.'},
+  {date:'May 2 · 08:00',form:'GXO-G-005',site:'Gresham OR',field:'Zone ZN-22 Motion Sensor (Result)',answer:'Fail',officer:'L. Green',comment:'Zone not triggering. Alarm company notified.'},
+  {date:'May 3 · 06:55',form:'GXO-G-002',site:'Horn Lake', field:'Are all fire exits clear of obstruction?',answer:'Fail',officer:'C. Mills',comment:'Exit 4 blocked by pallet. Ops removed immediately.'},
+];
+
+const REPORT_ROWS=[
+  {date:'May 6 · 08:14',form:'Security Incident',type:'incident',site:'Lenoir NC',  officer:'J. García', role:'Security Officer'},
+  {date:'May 5 · 14:22',form:'Maintenance Req.', type:'maint',   site:'Corn Omaha', officer:'M. Torres', role:'Supervisor'},
+  {date:'May 5 · 11:03',form:'Security Incident',type:'incident',site:'Oakley GA',  officer:'K. Smith',  role:'Lead Officer'},
+  {date:'May 4 · 09:45',form:'Maintenance Req.', type:'maint',   site:'Gresham OR', officer:'L. Davis',  role:'Security Officer'},
+  {date:'May 3 · 16:30',form:'Property Removal', type:'removal', site:'Papillion',  officer:'R. Patel',  role:'Security Officer'},
+  {date:'May 3 · 11:20',form:'Security Incident',type:'incident',site:'Manassas VA',officer:'R. Davis',  role:'Supervisor'},
+  {date:'May 2 · 08:55',form:'Maintenance Req.', type:'maint',   site:'Skyview GA', officer:'T. Brown',  role:'Security Officer'},
+];
+
+const OFFICERS=[
+  {name:'M. Torres',  ini:'MT',site:'Lenoir NC',   role:'Supervisor',       audits:141,reports:2,fails:8, color:'#e0f2fe'},
+  {name:'J. García',  ini:'JG',site:'Corn Omaha',  role:'Security Officer', audits:95, reports:3,fails:14,color:'#dcfce7'},
+  {name:'R. Davis',   ini:'RD',site:'Manassas VA', role:'Supervisor',       audits:112,reports:3,fails:10,color:'#fee2e2'},
+  {name:'K. Smith',   ini:'KS',site:'Oakley GA',   role:'Lead Officer',     audits:87, reports:1,fails:5, color:'#ede9fe'},
+  {name:'M. Lee',     ini:'ML',site:'Papillion NE',role:'Supervisor',       audits:95, reports:0,fails:0, color:'#fef3c7'},
+  {name:'T. Brown',   ini:'TB',site:'Skyview GA',  role:'Security Officer', audits:78, reports:1,fails:3, color:'#d1fae5'},
+  {name:'C. Reyes',   ini:'CR',site:'Santiago CHL',role:'Security Officer', audits:64, reports:0,fails:1, color:'#e0f2fe'},
+  {name:'A. Gutierrez',ini:'AG',site:'Uruguay',    role:'Security Officer', audits:19, reports:2,fails:4, color:'#fef2f2'},
+];
+
+const FORMS_TABLE=[
+  {id:'002',name:'Daily Security Priorities',cat:'Daily Security',   count:613,sites:13,last:'Today 06:14'},
+  {id:'001',name:'Daily Metal Detector',     cat:'Daily Security',   count:541,sites:11,last:'Today 06:32'},
+  {id:'003',name:'Daily CCTV Audit',         cat:'Daily Security',   count:467,sites:11,last:'Today 07:18'},
+  {id:'004',name:'Door Bypass Log',          cat:'Access & Doors',   count:412,sites:12,last:'Today 07:05'},
+  {id:'009',name:'Truck Entry/Exit Log',     cat:'Access & Doors',   count:398,sites:11,last:'Today 07:42'},
+  {id:'013',name:'Trailer Yard Audit',       cat:'Yard Operations',  count:286,sites:3, last:'Today 03:00'},
+  {id:'005',name:'Monthly Alarm Inspection', cat:'Monthly Audits',   count:286,sites:11,last:'May 2'},
+  {id:'006',name:'Monthly Access Control',   cat:'Monthly Audits',   count:286,sites:11,last:'May 2'},
+  {id:'010',name:'Key Control Audit',        cat:'Access & Doors',   count:239,sites:7, last:'Today 06:00'},
+  {id:'011',name:'Maintenance Request',      cat:'Reports & Events', count:38, sites:6, last:'May 5'},
+  {id:'008',name:'Security Incident Report', cat:'Reports & Events', count:23, sites:9, last:'May 6'},
+  {id:'012',name:'Property Removal',         cat:'Reports & Events', count:3,  sites:4, last:'May 3'},
+];
+
+const catColors={'Daily Security':'#e05a22','Access & Doors':'#1e6fff','Monthly Audits':'#c97b00','Reports & Events':'#d42b2b','Yard Operations':'#0a8f7e'};
+const pageTitles={p1:'Network Overview',p2:'Audit Activity',p3:'Audit Fail Analysis',p4:'Reports & Events',p5:'By Officer'};
+
+// ── NAV ───────────────────────────────────────────────────────
+function switchPage(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  document.getElementById('page-title').textContent=pageTitles[id];
+  document.getElementById('page-crumb').textContent=getCrumb();
+  setTimeout(()=>initPage(id),40);
+}
+function getCrumb(){
+  const s=document.getElementById('f-site').value;
+  const f=document.getElementById('f-form').value;
+  const c=document.getElementById('f-cat').value;
+  const parts=[];
+  if(s!=='all') parts.push(SITES.find(x=>x.id===s)?.name||s);
+  else parts.push('All sites');
+  if(f!=='all') parts.push('Form: GXO-G-'+f);
+  else if(c!=='all') parts.push('Cat: '+c);
+  else parts.push('All forms');
+  return parts.join(' · ');
+}
+function applyFilters(){
+  const p=document.getElementById('f-period').value;
+  const lbl={may26:'May 2026',apr26:'April 2026',q1:'Q1 2026',last30:'Last 30 days'};
+  document.getElementById('period-display').textContent=lbl[p];
+  document.getElementById('page-crumb').textContent=getCrumb();
+  const active=document.querySelector('.page.active')?.id;
+  if(active) setTimeout(()=>initPage(active),30);
+}
+function initPage(id){
+  if(id==='p1') initP1();
+  if(id==='p2') initP2();
+  if(id==='p3') initP3();
+  if(id==='p4') initP4();
+  if(id==='p5') initP5();
+}
+
+// ── P1 ────────────────────────────────────────────────────────
+function initP1(){
+  // Stacked bar site × category
+  DC('siteCat');
+  const sl=SITES.map(s=>s.name.split(' ')[0]);
+  const cd={daily:[214,638,116,67,184,118,67,184,64,118,78,65,0],access:[168,412,88,52,142,90,52,142,49,90,59,49,0],monthly:[39,186,42,24,67,43,24,67,23,43,28,24,0],report:[12,14,6,3,8,3,3,8,3,2,3,2,2],yard:[0,188,0,0,0,0,0,0,0,0,17,0,0]};
+  AC['siteCat']=new Chart(document.getElementById('chartSiteCat'),{type:'bar',data:{labels:sl,datasets:[
+    {label:'Daily Security',data:cd.daily,backgroundColor:'#e05a22cc',stack:'a',borderWidth:0},
+    {label:'Access & Doors',data:cd.access,backgroundColor:'#1e6fffcc',stack:'a',borderWidth:0},
+    {label:'Monthly Audits',data:cd.monthly,backgroundColor:'#c97b00cc',stack:'a',borderWidth:0},
+    {label:'Reports & Events',data:cd.report,backgroundColor:'#d42b2bcc',stack:'a',borderWidth:0},
+    {label:'Yard Ops',data:cd.yard,backgroundColor:'#0a8f7ecc',stack:'a',borderWidth:0},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:10}}},y:{stacked:true,grid:{color:'#f1f5f9'}}}}});
+
+  // Fail by site small bar
+  DC('failSiteP1');
+  const sitesSorted=[...SITES].sort((a,b)=>b.fails-a.fails).slice(0,8);
+  AC['failSiteP1']=new Chart(document.getElementById('chartFailSiteP1'),{type:'bar',
+    data:{labels:sitesSorted.map(s=>s.name.split(' ')[0]),datasets:[{data:sitesSorted.map(s=>s.fails),backgroundColor:sitesSorted.map(s=>s.failRate>5?'#d42b2b':'#f87171'),borderRadius:3,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:{color:'#f1f5f9'}}}}});
+
+  // Trend P1 line
+  DC('trendP1');
+  const days14=Array.from({length:14},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(13-i));return d.toLocaleDateString('en',{month:'short',day:'numeric'});});
+  const audD=days14.map(()=>Math.floor(140+Math.random()*60));
+  const failD=days14.map(()=>Math.floor(2+Math.random()*12));
+  AC['trendP1']=new Chart(document.getElementById('chartTrendP1'),{type:'line',
+    data:{labels:days14,datasets:[
+      {label:'Submissions',data:audD,borderColor:'#1e6fff',tension:.3,pointRadius:1,borderWidth:2,fill:false,yAxisID:'y'},
+      {label:'Fails',data:failD,borderColor:'#d42b2b',tension:.3,pointRadius:1,borderWidth:2,fill:false,yAxisID:'y1'},
+    ]},options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:8,font:{size:9},usePointStyle:true}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:8},maxTicksLimit:7}},y:{position:'left',grid:{color:'#f1f5f9'},ticks:{font:{size:9}}},y1:{position:'right',grid:{display:false},ticks:{font:{size:9}}}}}});
+
+  // Site table
+  const tb=document.getElementById('siteTableP1');
+  tb.innerHTML=SITES.map(s=>{
+    const rateColor=s.failRate>7?'var(--red)':s.failRate>4?'var(--amber)':'var(--green)';
+    return `<tr>
+      <td style="font-weight:500">${s.name}</td>
+      <td style="font-family:'DM Mono',monospace">${s.total.toLocaleString()}</td>
+      <td style="font-family:'DM Mono',monospace">${s.audits.toLocaleString()}</td>
+      <td><span class="fail-badge">${s.fails}</span></td>
+      <td>
+        <div class="rate-wrap">
+          <div class="rate-track"><div class="rate-fill" style="width:${Math.min(s.failRate*8,100)}%;background:${rateColor}"></div></div>
+          <span class="rate-pct" style="color:${rateColor}">${s.failRate}%</span>
+        </div>
+      </td>
+      <td style="font-size:11px;color:var(--muted)">${s.topField}</td>
+      <td><span class="pill pill-red">${s.reports}</span></td>
+      <td>${s.today?'<span class="pass-badge">Active</span>':'<span class="na-badge">—</span>'}</td>
+    </tr>`;}).join('');
+}
+
+// ── P2 ────────────────────────────────────────────────────────
+function initP2(){
+  DC('topForms');
+  const af=FORMS_TABLE.filter(f=>f.cat!=='Reports & Events');
+  AC['topForms']=new Chart(document.getElementById('chartTopForms'),{type:'bar',
+    data:{labels:af.map(f=>f.name),datasets:[{data:af.map(f=>f.count),backgroundColor:af.map(f=>catColors[f.cat]||'#888'),borderRadius:3,borderWidth:0}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#f1f5f9'}},y:{grid:{display:false},ticks:{font:{size:10}}}}}});
+
+  DC('auditTrend');
+  const wks=['W1','W2','W3','W4','W5','W6','W7','W8'];
+  AC['auditTrend']=new Chart(document.getElementById('chartAuditTrend'),{type:'line',
+    data:{labels:wks,datasets:[
+      {label:'Daily Security',data:[380,392,375,410,405,390,415,398],borderColor:'#e05a22',tension:.4,pointRadius:2,borderWidth:2},
+      {label:'Access & Doors',data:[240,252,238,265,270,255,268,262],borderColor:'#1e6fff',tension:.4,pointRadius:2,borderWidth:2},
+      {label:'Monthly Audits',data:[180,175,190,185,195,188,192,186],borderColor:'#c97b00',tension:.4,pointRadius:2,borderWidth:2},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:8,font:{size:9},usePointStyle:true}}},scales:{x:{grid:{display:false}},y:{grid:{color:'#f1f5f9'}}}}});
+
+  DC('hourAudit');
+  const hc=[2,1,8,4,3,12,45,80,62,48,35,28,22,18,24,30,38,45,20,12,8,5,4,3];
+  AC['hourAudit']=new Chart(document.getElementById('chartHourAudit'),{type:'bar',
+    data:{labels:Array.from({length:24},(_,i)=>`${i.toString().padStart(2,'0')}h`),datasets:[{data:hc,backgroundColor:hc.map(v=>v>50?'#1e6fff':v>25?'#93c5fd':'#dbeafe'),borderWidth:0,borderRadius:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:8},maxTicksLimit:12}},y:{grid:{color:'#f1f5f9'}}}}});
+
+  document.getElementById('auditFormBody').innerHTML=af.map(f=>`
+    <tr>
+      <td style="font-weight:500">GXO-G-${f.id} · ${f.name}</td>
+      <td><span class="pill" style="background:${catColors[f.cat]||'#888'}22;color:${catColors[f.cat]||'#888'}">${f.cat}</span></td>
+      <td style="font-family:'DM Mono',monospace;font-weight:600">${f.count}</td>
+      <td style="font-family:'DM Mono',monospace">${f.sites}/13</td>
+      <td style="color:var(--muted);font-size:11px">${f.last}</td>
+    </tr>`).join('');
+}
+
+// ── P3 FAIL ANALYSIS ──────────────────────────────────────────
+function initP3(){
+  // Fail by form
+  DC('failByForm');
+  const formFails=[{n:'Security Priorities (G-002)',v:48},{n:'Metal Detector (G-001)',v:28},{n:'CCTV Audit (G-003)',v:21},{n:'Alarm Inspection (G-005)',v:18},{n:'Trailer Yard (G-013)',v:12},{n:'Door Bypass (G-004)',v:8},{n:'Key Control (G-010)',v:5},{n:'Truck Log (G-009)',v:4},{n:'Monthly Access (G-006)',v:3}];
+  AC['failByForm']=new Chart(document.getElementById('chartFailByForm'),{type:'bar',
+    data:{labels:formFails.map(f=>f.n),datasets:[{data:formFails.map(f=>f.v),backgroundColor:formFails.map(f=>f.v>30?'#d42b2b':f.v>15?'#f87171':'#fca5a5'),borderRadius:3,borderWidth:0}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#f1f5f9'}},y:{grid:{display:false},ticks:{font:{size:9}}}}}});
+
+  // Fail by site
+  DC('failBySite');
+  const sf=[...SITES].filter(s=>s.fails>0).sort((a,b)=>b.fails-a.fails);
+  AC['failBySite']=new Chart(document.getElementById('chartFailBySite'),{type:'bar',
+    data:{labels:sf.map(s=>s.name.split(' ')[0]),datasets:[{data:sf.map(s=>s.fails),backgroundColor:sf.map(s=>s.failRate>7?'#d42b2b':s.failRate>4?'#f59e0b':'#fca5a5'),borderRadius:3,borderWidth:0}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#f1f5f9'}},y:{grid:{display:false},ticks:{font:{size:9}}}}}});
+
+  // Fail trend
+  DC('failTrend');
+  const days=Array.from({length:30},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(29-i));return d.toLocaleDateString('en',{month:'short',day:'numeric'});});
+  AC['failTrend']=new Chart(document.getElementById('chartFailTrend'),{type:'line',
+    data:{labels:days,datasets:[{label:'Fail results',data:days.map(()=>Math.floor(1+Math.random()*12)),borderColor:'#d42b2b',backgroundColor:'rgba(212,43,43,.08)',tension:.3,pointRadius:2,borderWidth:2,fill:true}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:8},maxTicksLimit:8}},y:{grid:{color:'#f1f5f9'},ticks:{stepSize:2}}}}});
+
+  // Fail category donut
+  DC('failCat');
+  AC['failCat']=new Chart(document.getElementById('chartFailCat'),{type:'doughnut',
+    data:{labels:['Exterior / Lighting','Equipment (MD/CCTV)','Access / Doors','Alarm Zones','Other'],
+      datasets:[{data:[44,37,28,18,20],backgroundColor:['#d42b2b','#f87171','#c97b00','#0a8f7e','#7988a0'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'right',labels:{boxWidth:7,font:{size:9}}}}}});
+
+  // Fail field table
+  document.getElementById('failFieldBody').innerHTML=FAIL_FIELDS.map((f,i)=>{
+    const rc=f.rate>15?'var(--red)':f.rate>8?'var(--amber)':'var(--green)';
+    const rowBg=i<3?'#fff8f8':'';
+    return `<tr style="background:${rowBg}">
+      <td>${i<3?'<span class="critical-dot"></span>':''}</td>
+      <td style="font-size:11px;font-weight:${i<3?600:400}">${f.field}</td>
+      <td style="font-size:11px"><span class="pill pill-gray">${f.formName.split(' ').slice(0,2).join(' ')}</span></td>
+      <td style="font-size:11px;color:var(--muted)">${f.site}</td>
+      <td style="text-align:center"><span class="fail-badge">${f.fails}×</span></td>
+      <td>
+        <div class="rate-wrap">
+          <div class="rate-track"><div class="rate-fill" style="width:${Math.min(f.rate*3,100)}%;background:${rc}"></div></div>
+          <span class="rate-pct" style="color:${rc}">${f.rate}%</span>
+        </div>
+      </td>
+      <td style="font-size:11px;color:var(--muted)">${f.last}</td>
+    </tr>`;}).join('');
+
+  renderFailLog();
+}
+
+function renderFailLog(){
+  const ff=document.getElementById('failFormFilter')?.value||'all';
+  const fs=document.getElementById('failSiteFilter')?.value||'all';
+  const pillT={incident:'pill-red',maint:'pill-amber',removal:'pill-blue'};
+  const filtered=FAIL_LOG_DATA.filter(r=>(ff==='all'||r.form===ff)&&(fs==='all'||r.site===fs));
+  const avBg=['#e0f2fe','#dcfce7','#ede9fe','#fee2e2','#fef3c7','#d1fae5'];
+  document.getElementById('failLogBody').innerHTML=filtered.map((r,i)=>`
+    <tr>
+      <td style="color:var(--muted);font-size:11px">${r.date}</td>
+      <td style="font-size:11px"><span class="pill pill-amber">${r.form}</span></td>
+      <td style="font-size:11px">${r.site}</td>
+      <td style="font-weight:600;color:var(--red);font-size:11px">${r.field}</td>
+      <td><span class="fail-badge">${r.answer}</span></td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="av" style="background:${avBg[i%avBg.length]};color:var(--slate)">${r.officer.split(' ').map(n=>n[0]).join('')}</div>
+          <span style="font-size:11px">${r.officer}</span>
+        </div>
+      </td>
+      <td style="font-size:11px;color:var(--muted);font-style:italic">${r.comment}</td>
+    </tr>`).join('');
+}
+
+// ── P4 REPORTS ────────────────────────────────────────────────
+function initP4(){
+  DC('reportTrend');
+  const d30=Array.from({length:30},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(29-i));return d.toLocaleDateString('en',{month:'short',day:'numeric'});});
+  AC['reportTrend']=new Chart(document.getElementById('chartReportTrend'),{type:'line',
+    data:{labels:d30,datasets:[
+      {label:'Security Incident',data:d30.map(()=>Math.random()<.4?Math.floor(Math.random()*3):0),borderColor:'#d42b2b',tension:.3,pointRadius:2,borderWidth:2},
+      {label:'Maintenance',data:d30.map(()=>Math.random()<.6?Math.floor(Math.random()*4):0),borderColor:'#c97b00',tension:.3,pointRadius:2,borderWidth:2},
+      {label:'Property Removal',data:d30.map(()=>Math.random()<.1?1:0),borderColor:'#1e6fff',tension:.3,pointRadius:2,borderWidth:2},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:8,font:{size:9},usePointStyle:true}}},scales:{x:{grid:{display:false},ticks:{font:{size:8},maxTicksLimit:8}},y:{grid:{color:'#f1f5f9'},ticks:{stepSize:1}}}}});
+
+  DC('reportSite');
+  const rs=SITES.filter(s=>s.reports>0).sort((a,b)=>b.reports-a.reports).slice(0,7);
+  AC['reportSite']=new Chart(document.getElementById('chartReportSite'),{type:'bar',
+    data:{labels:rs.map(s=>s.name.split(' ')[0]),datasets:[{data:rs.map(s=>s.reports),backgroundColor:'#d42b2baa',borderRadius:3,borderWidth:0}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#f1f5f9'}},y:{grid:{display:false}}}}});
+
+  DC('reportDonut');
+  AC['reportDonut']=new Chart(document.getElementById('chartReportDonut'),{type:'doughnut',
+    data:{labels:['Security Incident','Maintenance','Property Removal'],datasets:[{data:[23,38,3],backgroundColor:['#d42b2b','#c97b00','#1e6fff'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'right',labels:{boxWidth:8,font:{size:9}}}}}});
+
+  DC('reportHour');
+  const rh=[0,0,0,0,0,0,2,4,6,5,3,4,6,5,4,5,6,5,4,3,2,1,0,0];
+  AC['reportHour']=new Chart(document.getElementById('chartReportHour'),{type:'bar',
+    data:{labels:Array.from({length:24},(_,i)=>`${i}h`),datasets:[{data:rh,backgroundColor:rh.map(v=>v>4?'#d42b2b':v>2?'#f87171':'#fecaca'),borderWidth:0,borderRadius:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:8}}},y:{grid:{color:'#f1f5f9'},ticks:{stepSize:2,font:{size:9}}}}}});
+
+  const avBg=['#e0f2fe','#dcfce7','#ede9fe','#fee2e2','#fef3c7','#d1fae5','#fce7f3'];
+  const pillT={incident:'pill-red',maint:'pill-amber',removal:'pill-blue'};
+  document.getElementById('reportTable').innerHTML=REPORT_ROWS.map((r,i)=>`
+    <tr>
+      <td style="color:var(--muted);font-size:11px">${r.date}</td>
+      <td><span class="pill ${pillT[r.type]||'pill-gray'}">${r.form}</span></td>
+      <td style="font-size:11px">${r.site}</td>
+      <td><div style="display:flex;align-items:center;gap:6px"><div class="av" style="background:${avBg[i%avBg.length]};color:var(--slate)">${r.officer.split(' ').map(n=>n[0]).join('')}</div><span style="font-size:11px">${r.officer}</span></div></td>
+      <td style="font-size:11px;color:var(--muted)">${r.role}</td>
+    </tr>`).join('');
+}
+
+// ── P5 OFFICERS ───────────────────────────────────────────────
+function initP5(){
+  document.getElementById('officerTable').innerHTML=OFFICERS.sort((a,b)=>(b.audits+b.reports)-(a.audits+a.reports)).map(o=>`
+    <tr>
+      <td><div style="display:flex;align-items:center;gap:7px"><div class="av" style="background:${o.color};color:var(--slate)">${o.ini}</div><span style="font-weight:500">${o.name}</span></div></td>
+      <td style="font-size:11px">${o.site}</td>
+      <td><span class="pill pill-gray" style="font-size:9px">${o.role}</span></td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${o.audits}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${o.reports>0?`<span class="pill pill-red">${o.reports}</span>`:o.reports}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${o.fails>0?`<span class="fail-badge">${o.fails}</span>`:'0'}</td>
+      <td style="font-size:11px;color:var(--muted)">Today</td>
+    </tr>`).join('');
+
+  DC('dayOfWeek');
+  AC['dayOfWeek']=new Chart(document.getElementById('chartDayOfWeek'),{type:'bar',
+    data:{labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],datasets:[{data:[188,181,192,186,175,82,73],backgroundColor:['#1e6fff','#1e6fff','#1e6fff','#1e6fff','#1e6fff','#93c5fd','#93c5fd'],borderRadius:3,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'#f1f5f9'}}}}});
+
+  const maxV=Math.max(...OFFICERS.map(o=>o.audits+o.reports));
+  document.getElementById('topOfficers').innerHTML=OFFICERS.slice(0,6).map(o=>`
+    <div class="mbar-row" style="margin-bottom:8px">
+      <span class="mbar-lbl" style="width:100px">${o.name}</span>
+      <div class="mbar-track"><div class="mbar-fill" style="width:${Math.round((o.audits+o.reports)/maxV*100)}%;background:#1e6fff"></div></div>
+      <span class="mbar-cnt">${o.audits+o.reports}</span>
+    </div>`).join('');
+}
+
+window.addEventListener('load',()=>initP1());
+</script>
+</body>
+</html>
